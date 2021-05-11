@@ -65,7 +65,7 @@
         "type": "function",
         "z": "f03b6707.14dc98",
         "name": "LowCost Hour",
-        "func": "var rateType = 'A'; // A, DHA, VH\n\nvar lowCostHour = 0;\nvar lowCostPrice = 999;\n\nvar intervals = msg.payload.intervals;\nfor (var hour = 0; hour < 23; hour++) {\n    var interval = intervals[hour];\n    \n    if (interval.prices[rateType] < lowCostPrice) {\n        lowCostHour = hour;\n        lowCostPrice = interval.prices[rateType];\n    }\n}\n\nmsg.payload.lowCost = {\n    hour: lowCostHour,\n    price: lowCostPrice\n}\n\nreturn msg;\n",
+        "func": "var rateType = 'A'; // A, DHA, VH\n\nvar lowCostHour = 0;\nvar lowCostPrice = 999;\n\nvar intervals = msg.payload.intervals;\nfor (var hour = 0; hour < 24; hour++) {\n    var interval = intervals[hour];\n    \n    if (interval.prices[rateType] < lowCostPrice) {\n        lowCostHour = hour;\n        lowCostPrice = interval.prices[rateType];\n    }\n}\n\nmsg.payload.lowCost = {\n    hour: lowCostHour,\n    price: lowCostPrice\n}\n\nreturn msg;\n",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
