@@ -1,0 +1,139 @@
+[
+    {
+        "id": "a128fe85.dd941",
+        "type": "http request",
+        "z": "f03b6707.14dc98",
+        "name": "eSIOS",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.esios.ree.es/archives/70/download_json?locale=es",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 230,
+        "y": 60,
+        "wires": [
+            [
+                "19a8d63.1ba3c2a"
+            ]
+        ],
+        "info": "Sistema de información del operador del sistema"
+    },
+    {
+        "id": "11bcb482.4c4e8b",
+        "type": "inject",
+        "z": "f03b6707.14dc98",
+        "name": "Daily",
+        "props": [],
+        "repeat": "",
+        "crontab": "01 00 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 90,
+        "y": 60,
+        "wires": [
+            [
+                "a128fe85.dd941"
+            ]
+        ]
+    },
+    {
+        "id": "19a8d63.1ba3c2a",
+        "type": "function",
+        "z": "f03b6707.14dc98",
+        "name": "Parse Data",
+        "func": "function stringFromDate(date) {\n    let dateStr = date.toLocaleDateString(\n        \"en-GB\",\n        {\n            day: '2-digit',\n            month: '2-digit',\n            year: 'numeric'\n        }\n    )\n    \n    let arr = dateStr.split(\"/\")\n    let d = arr[0]; \n    let m = arr[1];\n    let y = arr[2];\n    \n    return y + '-' + m + '-' + d;\n}\n\nfunction stringToPrice(text) {\n    var price = text.replace(',', '.');\n    price = parseFloat(price);\n    price = price / 1000;\n    price = price.toFixed(5);\n    \n    return parseFloat(price);\n}\n\nvar pvpc = msg.payload.PVPC;\n\nvar date = new Date(pvpc[0].Dia);\nvar day = stringFromDate(date);\n\nvar payload = {\n    day: day,\n    intervals: []\n}\n\nfor (var hour = 0; hour < 23; hour++) {\n    var interval = pvpc[hour];\n    \n    payload.intervals.push({\n        hour: hour.toString().padStart(2, '0'),\n        prices: {\n            A: stringToPrice(interval.GEN),\n            DHA: stringToPrice(interval.NOC),\n            VH: stringToPrice(interval.VHC)\n        }\n    });\n}\n\nreturn {\n    payload: payload\n}\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 60,
+        "wires": [
+            [
+                "7cc2c6da.4d2b88"
+            ]
+        ],
+        "info": "GEN: Precio de la energía para viviendas con tarifa 2.0 A\nNOC: Precio de la energía para viviendas con tarifa 2.0 DHA\nVHC: Precio de la energía para viviendas con tarifa 2.0 VH\n"
+    },
+    {
+        "id": "7cc2c6da.4d2b88",
+        "type": "function",
+        "z": "f03b6707.14dc98",
+        "name": "LowCost Hour",
+        "func": "var rateType = 'A'; // A, DHA, VH\n\nvar lowCostHour = 0;\nvar lowCostPrice = 999;\n\nvar intervals = msg.payload.intervals;\nfor (var hour = 0; hour < 23; hour++) {\n    var interval = intervals[hour];\n    \n    if (interval.prices[rateType] < lowCostPrice) {\n        lowCostHour = hour;\n        lowCostPrice = interval.prices[rateType];\n    }\n}\n\nmsg.payload.lowCost = {\n    hour: lowCostHour,\n    price: lowCostPrice\n}\n\nreturn msg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 160,
+        "y": 120,
+        "wires": [
+            [
+                "8fa087e6.624548"
+            ]
+        ]
+    },
+    {
+        "id": "8fa087e6.624548",
+        "type": "function",
+        "z": "f03b6707.14dc98",
+        "name": "Generate Message",
+        "func": "var message = '*¡Precio más bajo!*\\n' +\n    'De las *' +\n    msg.payload.lowCost.hour + ':00* a *' +\n    msg.payload.lowCost.hour + ':59* horas con un importe de *' +\n    (msg.payload.lowCost.price * 100) + '* centimos/kWh en tarifa *' +\n    msg.payload.lowCost.tarifa +'*'\n\nreturn {\n    payload: {\n        type: \"message\",\n        content: message,\n        options: {\n            parse_mode: \"Markdown\"\n        }\n    }\n}\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 120,
+        "wires": [
+            [
+                "e1b94625.d543c8"
+            ]
+        ]
+    },
+    {
+        "id": "e1b94625.d543c8",
+        "type": "telegram sender",
+        "z": "f03b6707.14dc98",
+        "name": "Telegram Bot",
+        "bot": "592da116.c785b",
+        "haserroroutput": false,
+        "outputs": 1,
+        "x": 570,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "592da116.c785b",
+        "type": "telegram bot",
+        "botname": "Telegram Bot",
+        "usernames": "",
+        "chatids": "",
+        "baseapiurl": "",
+        "updatemode": "polling",
+        "pollinterval": "300",
+        "usesocks": false,
+        "sockshost": "",
+        "socksport": "6667",
+        "socksusername": "anonymous",
+        "sockspassword": "",
+        "bothost": "",
+        "botpath": "",
+        "localbotport": "8443",
+        "publicbotport": "8443",
+        "privatekey": "",
+        "certificate": "",
+        "useselfsignedcertificate": false,
+        "sslterminated": false,
+        "verboselogging": false
+    }
+]
